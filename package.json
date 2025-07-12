@@ -6,14 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 3000",
-    "start": "vite preview --host 0.0.0.0 --port 3000",
+    "pi:build": "tsc && vite build --mode production",
+    "pi:install": "npm ci --production=false",
+    "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint . --ext ts,tsx --fix",
     "type-check": "tsc --noEmit",
-    "pi:install": "NODE_OPTIONS='--max-old-space-size=2048' npm install",
-    "pi:build": "NODE_OPTIONS='--max-old-space-size=2048' npm run build",
-    "pi:dev": "NODE_OPTIONS='--max-old-space-size=1024' npm run dev"
+    "setup": "chmod +x scripts/*.sh && ./scripts/setup.sh",
+    "start-dev": "chmod +x scripts/start-dev.sh && ./scripts/start-dev.sh",
+    "start-prod": "chmod +x scripts/start-prod.sh && ./scripts/start-prod.sh",
+    "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh"
   },
   "dependencies": {
     "@tanstack/react-query": "^4.29.0",

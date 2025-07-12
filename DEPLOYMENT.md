@@ -1,247 +1,318 @@
-# Bella's Reef Web UI - Raspberry Pi Deployment Guide
+# Bella's Reef Web UI - Deployment Guide
 
-## 🍓 Target Environment
-- **Hardware**: Raspberry Pi 4/5 (recommended 8GB RAM)
-- **OS**: Debian 12 (Bookworm) or Ubuntu 22.04 LTS
-- **Kernel**: 6.8+ (modern kernel for best performance)
-- **Architecture**: ARM64 (aarch64)
-- **Backend**: Existing API server running on Pi5
-- **Frontend**: This web UI project (deployed separately)
+This guide covers deploying the Bella's Reef Web UI to various environments, including Raspberry Pi 5.
 
-## 📦 Prerequisites
+## 🚀 Quick Start
 
-### Install Node.js 20+ (Latest LTS)
+### Development (Mac/Linux)
 ```bash
-# Using NodeSource repository
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Initial setup
+npm run setup
+
+# Start development server
+npm run start-dev
+```
+
+### Production (Raspberry Pi)
+```bash
+# Deploy to production
+npm run deploy
+
+# Start production server
+npm run start-prod
+```
+
+## 📋 Prerequisites
+
+### Development Environment
+- Node.js 18+ 
+- npm 9+
+- Git
+
+### Production Environment (Raspberry Pi 5)
+- Debian/Ubuntu with kernel 6.8+
+- Node.js 18+
+- npm 9+
+- PM2 (installed automatically by scripts)
+
+## 🔧 Setup Scripts
+
+### `scripts/setup.sh`
+Initial project setup and environment configuration:
+- Checks Node.js and npm versions
+- Installs dependencies
+- Creates `.env` file with backend configuration
+- Sets up logs directory
+- Configures Git hooks
+- Tests backend connectivity
+
+### `scripts/start-dev.sh`
+Development server startup:
+- Validates project structure
+- Checks dependencies
+- Tests backend connectivity
+- Sets environment variables
+- Starts Vite development server
+
+### `scripts/start-prod.sh`
+Production server startup:
+- Validates project structure
+- Checks dependencies and build
+- Installs PM2 if needed
+- Tests backend connectivity
+- Starts production server with PM2
+
+### `scripts/deploy.sh`
+Full deployment process:
+- Checks Git status
+- Installs dependencies
+- Builds for production
+- Validates build output
+- Deploys with PM2
+- Shows deployment status
+
+## 🐠 Backend Configuration
+
+The Web UI connects to the Bella's Reef backend API:
+
+- **Development**: `http://192.168.33.126:8000`
+- **Production**: `http://localhost:8000`
+- **WebSocket**: `ws://192.168.33.126:8000` (dev) / `ws://localhost:8000` (prod)
+
+### Authentication
+- **Username**: `bellas`
+- **Password**: `reefrocks`
+- **Token Validation**: `GET /api/users/me`
+- **Token Refresh**: `POST /api/auth/refresh`
+
+## 🖥️ Development Workflow
+
+### 1. Initial Setup
+```bash
+# Clone repository
+git clone <your-repo-url>
+cd bellasreef-webui
+
+# Run setup
+npm run setup
+```
+
+### 2. Development
+```bash
+# Start development server
+npm run start-dev
+
+# Or use standard Vite command
+npm run dev
+```
+
+### 3. Building
+```bash
+# Build for production
+npm run build
+
+# Build optimized for Pi
+npm run pi:build
+```
+
+## 🍓 Raspberry Pi Deployment
+
+### 1. Prepare Pi
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js 18+
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Verify installation
-node --version  # Should be 20.x.x
-npm --version   # Should be 10.x.x
+node --version
+npm --version
 ```
 
-### Install Build Dependencies
+### 2. Deploy Application
 ```bash
-sudo apt-get update
-sudo apt-get install -y \
-  build-essential \
-  python3 \
-  git \
-  curl \
-  wget \
-  htop \
-  nginx \
-  certbot \
-  python3-certbot-nginx
-```
-
-### Install PM2 for Process Management
-```bash
-sudo npm install -g pm2
-```
-
-## 🚀 Deployment Steps
-
-### 1. Clone Repository
-```bash
-cd /home/pi
-git clone https://github.com/viperdavethesnake/bellasreef-webui.git
+# Clone repository
+git clone <your-repo-url>
 cd bellasreef-webui
+
+# Deploy with PM2
+npm run deploy
 ```
 
-### 2. Install Dependencies
+### 3. Manage Application
 ```bash
-npm install
-```
+# Check status
+pm2 status
 
-### 3. Build for Production
-```bash
-npm run build
-```
+# View logs
+pm2 logs bellasreef-webui
 
-### 4. Configure PM2
-```bash
-# Create PM2 ecosystem file
-cat > ecosystem.config.js << 'EOF'
-module.exports = {
-  apps: [{
-    name: 'bellasreef-webui',
-    script: 'npm',
-    args: 'run preview',
-    cwd: '/home/pi/bellasreef-webui',
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000
-    }
-  }]
-}
-EOF
-
-# Start the application
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-```
-
-### 5. Configure Nginx (Optional)
-```bash
-sudo tee /etc/nginx/sites-available/bellasreef << 'EOF'
-server {
-    listen 80;
-    server_name your-pi-ip-or-domain;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-EOF
-
-sudo ln -s /etc/nginx/sites-available/bellasreef /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-## 🔧 Development Workflow
-
-### Option A: Mac Development + Pi Deployment (Recommended)
-```bash
-# On Mac (development)
-git clone https://github.com/viperdavethesnake/bellasreef-webui.git
-cd bellasreef-webui
-npm run dev
-# Test against Pi5 API at http://pi5-ip:8000
-
-# On Pi (deployment)
-cd /home/pi/bellasreef-webui
-git pull origin main
-npm run pi:build
+# Restart application
 pm2 restart bellasreef-webui
-```
 
-### Option B: Pi Development (Alternative)
-```bash
-# On Pi
-cd /home/pi/bellasreef-webui
-npm run pi:dev  # Development server
-# Access at http://pi-ip:3000
-```
+# Stop application
+pm2 stop bellasreef-webui
 
-## 🔌 API Integration
-
-### Backend Connection
-```bash
-# Update API configuration in src/config/api.ts
-# Set your Pi5 IP address and API port
-# Default: http://192.168.1.100:8000
-```
-
-### Testing API Connection
-```bash
-# Test backend connectivity
-curl http://pi5-ip:8000/api/system/status
-```
-
-## 📊 Monitoring
-
-### System Resources
-```bash
-# Monitor Pi performance
-htop
+# Monitor applications
 pm2 monit
 ```
 
-### Logs
+## 🔧 Configuration
+
+### Environment Variables
+Create `.env` file in project root:
+
+```env
+# Backend API Configuration
+VITE_API_BASE_URL=http://192.168.33.126:8000
+VITE_WS_BASE_URL=ws://192.168.33.126:8000
+
+# Development Settings
+VITE_DEV_MODE=true
+VITE_ENABLE_LOGGING=true
+
+# Authentication Settings
+VITE_TOKEN_STORAGE_KEY=bellas_reef_access_token
+VITE_REFRESH_TOKEN_STORAGE_KEY=bellas_reef_refresh_token
+
+# Default Credentials (for development only)
+VITE_DEFAULT_USERNAME=bellas
+VITE_DEFAULT_PASSWORD=reefrocks
+```
+
+### PM2 Configuration
+The `ecosystem.config.js` file configures PM2 for production:
+
+- **App Name**: `bellasreef-webui`
+- **Port**: 3000
+- **Auto-restart**: Enabled
+- **Memory Limit**: 1GB
+- **Logs**: `./logs/`
+
+## 📊 Monitoring
+
+### PM2 Commands
 ```bash
-# Application logs
+# Application status
+pm2 status
+
+# Real-time monitoring
+pm2 monit
+
+# Logs
 pm2 logs bellasreef-webui
 
-# System logs
-sudo journalctl -f
+# Performance metrics
+pm2 show bellasreef-webui
 ```
 
-## 🔒 Security Considerations
+### Log Files
+- **Application Logs**: `./logs/app.log`
+- **Error Logs**: `./logs/error.log`
+- **Combined Logs**: `./logs/combined.log`
 
-### Firewall Setup
+## 🔄 Updates
+
+### Development Updates
 ```bash
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp     # HTTP
-sudo ufw allow 443/tcp    # HTTPS
-sudo ufw allow 3000/tcp   # Development
-sudo ufw enable
-```
-
-### SSL Certificate (Optional)
-```bash
-sudo certbot --nginx -d your-domain.com
-```
-
-## 🚀 Performance Optimization
-
-### Pi-specific Optimizations
-```bash
-# Increase swap for builds
-sudo dphys-swapfile swapoff
-sudo nano /etc/dphys-swapfile
-# Set CONF_SWAPSIZE=2048
-sudo dphys-swapfile setup
-sudo dphys-swapfile swapon
-
-# Optimize for ARM
-export NODE_OPTIONS="--max-old-space-size=2048"
-```
-
-## 📱 Access Methods
-
-### Local Network
-- **HTTP**: `http://pi-ip:3000`
-- **HTTPS**: `https://pi-ip` (with nginx)
-
-### Remote Access
-- **VPN**: Set up WireGuard or OpenVPN
-- **SSH Tunnel**: `ssh -L 3000:localhost:3000 pi@pi-ip`
-- **Reverse Proxy**: Use nginx with SSL
-
-## 🔄 Auto-update Script
-```bash
-#!/bin/bash
-# /home/pi/update-bellasreef.sh
-cd /home/pi/bellasreef-webui
+# Pull latest changes
 git pull origin main
+
+# Install new dependencies
 npm install
-npm run build
-pm2 restart bellasreef-webui
-echo "Bella's Reef updated at $(date)"
+
+# Start development
+npm run start-dev
 ```
 
-Make it executable:
+### Production Updates
 ```bash
-chmod +x /home/pi/update-bellasreef.sh
+# Pull latest changes
+git pull origin main
+
+# Deploy updates
+npm run deploy
 ```
 
-## 📋 Checklist
+## 🛠️ Troubleshooting
 
-- [ ] Pi OS updated to latest
-- [ ] Node.js 20+ installed
-- [ ] Repository cloned
-- [ ] Dependencies installed
-- [ ] Build successful
-- [ ] PM2 configured
-- [ ] Nginx configured (optional)
-- [ ] Firewall configured
-- [ ] SSL certificate (optional)
-- [ ] Auto-update script created
-- [ ] Hardware interfaces enabled
-- [ ] Monitoring setup 
+### Common Issues
+
+#### Backend Connection Failed
+```bash
+# Check if backend is running
+curl http://192.168.33.126:8000/health
+
+# Check network connectivity
+ping 192.168.33.126
+```
+
+#### PM2 Issues
+```bash
+# Reset PM2
+pm2 kill
+pm2 resurrect
+
+# Clear PM2 logs
+pm2 flush
+```
+
+#### Build Issues
+```bash
+# Clear cache and rebuild
+rm -rf node_modules dist
+npm install
+npm run pi:build
+```
+
+#### Port Conflicts
+```bash
+# Check what's using port 3000
+sudo lsof -i :3000
+
+# Kill process if needed
+sudo kill -9 <PID>
+```
+
+### Performance Optimization
+
+#### For Raspberry Pi
+- Use `npm run pi:build` for optimized builds
+- Monitor memory usage with `pm2 monit`
+- Consider using `--max-old-space-size=1024` for Node.js
+
+#### For Development
+- Use `npm run start-dev` for automatic environment setup
+- Enable logging with `VITE_ENABLE_LOGGING=true`
+- Use browser dev tools for debugging
+
+## 📱 Access
+
+### Development
+- **URL**: http://localhost:3000
+- **Backend**: http://192.168.33.126:8000
+- **Login**: bellas / reefrocks
+
+### Production (Pi)
+- **URL**: http://192.168.33.126:3000
+- **Backend**: http://localhost:8000
+- **Login**: bellas / reefrocks
+
+## 🔐 Security Notes
+
+- Default credentials are for development only
+- Change passwords in production
+- Use HTTPS in production environments
+- Regularly update dependencies
+- Monitor logs for security issues
+
+## 📞 Support
+
+For issues or questions:
+1. Check the troubleshooting section
+2. Review logs in `./logs/`
+3. Check PM2 status with `pm2 status`
+4. Verify backend connectivity
+5. Ensure all prerequisites are met 
