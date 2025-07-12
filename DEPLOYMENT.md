@@ -5,6 +5,8 @@
 - **OS**: Debian 12 (Bookworm) or Ubuntu 22.04 LTS
 - **Kernel**: 6.8+ (modern kernel for best performance)
 - **Architecture**: ARM64 (aarch64)
+- **Backend**: Existing API server running on Pi5
+- **Frontend**: This web UI project (deployed separately)
 
 ## 📦 Prerequisites
 
@@ -114,42 +116,42 @@ sudo systemctl restart nginx
 
 ## 🔧 Development Workflow
 
-### Option A: Direct Pi Development
-```bash
-# On Pi
-cd /home/pi/bellasreef-webui
-npm run dev  # Development server
-# Access at http://pi-ip:3000
-```
-
-### Option B: Hybrid Development
+### Option A: Mac Development + Pi Deployment (Recommended)
 ```bash
 # On Mac (development)
 git clone https://github.com/viperdavethesnake/bellasreef-webui.git
 cd bellasreef-webui
 npm run dev
+# Test against Pi5 API at http://pi5-ip:8000
 
 # On Pi (deployment)
+cd /home/pi/bellasreef-webui
 git pull origin main
-npm run build
+npm run pi:build
 pm2 restart bellasreef-webui
 ```
 
-## 🔌 Hardware Integration
-
-### GPIO Access
+### Option B: Pi Development (Alternative)
 ```bash
-# Install GPIO libraries
-sudo apt-get install -y python3-gpiozero
-npm install onoff  # For Node.js GPIO access
+# On Pi
+cd /home/pi/bellasreef-webui
+npm run pi:dev  # Development server
+# Access at http://pi-ip:3000
 ```
 
-### I2C/SPI Support
+## 🔌 API Integration
+
+### Backend Connection
 ```bash
-# Enable I2C/SPI in raspi-config
-sudo raspi-config
-# Interface Options -> I2C -> Enable
-# Interface Options -> SPI -> Enable
+# Update API configuration in src/config/api.ts
+# Set your Pi5 IP address and API port
+# Default: http://192.168.1.100:8000
+```
+
+### Testing API Connection
+```bash
+# Test backend connectivity
+curl http://pi5-ip:8000/api/system/status
 ```
 
 ## 📊 Monitoring
