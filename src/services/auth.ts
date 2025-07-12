@@ -1,102 +1,135 @@
-import axios, { AxiosInstance } from 'axios';
-import { TokenStorage } from '../utils/storage';
-import { 
-  LoginRequest, 
-  LoginResponse, 
-  RefreshTokenRequest, 
-  RefreshTokenResponse 
-} from '../types/auth';
+import axios from 'axios'
+import { TokenStorage } from '../utils/storage'
+import { LoginRequest, LoginResponse, User } from '../types/auth'
 
-class AuthService {
-  private api: AxiosInstance;
-  private baseURL: string;
+const API_BASE_URL = 'http://192.168.33.126:8000'
 
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
-    this.api = axios.create({
-      baseURL,
-      timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+// Create axios instance with interceptors
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
 
-    this.setupInterceptors();
-  }
+// Request interceptor to add auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = TokenStorage.getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
 
-  private setupInterceptors() {
-    // Request interceptor - add auth token
-    this.api.interceptors.request.use((config) => {
-      const token = TokenStorage.getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    });
+// Response interceptor to handle token refresh
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
 
-    // Response interceptor - handle token refresh
-    this.api.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        if (error.response?.status === 401) {
-          const refreshToken = TokenStorage.getRefreshToken();
-          if (refreshToken) {
-            try {
-              const response = await this.refreshToken({ refresh_token: refreshToken });
-              TokenStorage.setToken(response.access_token);
-              error.config.headers.Authorization = `Bearer ${response.access_token}`;
-              return this.api.request(error.config);
-            } catch (refreshError) {
-              // Clear tokens and redirect to login
-              TokenStorage.clearAll();
-              window.location.href = '/login';
-            }
-          } else {
-            // No refresh token, redirect to login
-            TokenStorage.clearAll();
-            window.location.href = '/login';
-          }
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+
+      try {
+        const refreshToken = TokenStorage.getRefreshToken()
+        if (!refreshToken) {
+          throw new Error('No refresh token available')
         }
-        return Promise.reject(error);
-      }
-    );
-  }
 
+        // Refresh token using Authorization header (not request body)
+        const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {}, {
+          headers: {
+            'Authorization': `Bearer ${refreshToken}`
+          }
+        })
+
+        const { access_token, refresh_token } = response.data
+        TokenStorage.setToken(access_token)
+        TokenStorage.setRefreshToken(refresh_token)
+
+        originalRequest.headers.Authorization = `Bearer ${access_token}`
+        return apiClient(originalRequest)
+      } catch (refreshError) {
+        TokenStorage.removeToken()
+        TokenStorage.removeRefreshToken()
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
+
+export class AuthService {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await this.api.post<LoginResponse>('/api/auth/login', credentials);
+    const response = await axios.post(`${API_BASE_URL}/api/auth/login`, 
+      `username=${credentials.username}&password=${credentials.password}`,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    )
     
-    // Store tokens
-    TokenStorage.setToken(response.data.access_token);
-    TokenStorage.setRefreshToken(response.data.refresh_token);
+    const data = response.data
     
-    return response.data;
+    // Store tokens securely
+    TokenStorage.setToken(data.access_token)
+    TokenStorage.setRefreshToken(data.refresh_token)
+    
+    return data
   }
 
   async logout(): Promise<void> {
     try {
-      await this.api.post('/api/auth/logout');
+      await apiClient.post('/api/auth/logout')
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout error:', error)
     } finally {
-      TokenStorage.clearAll();
+      TokenStorage.removeToken()
+      TokenStorage.removeRefreshToken()
     }
   }
 
-  async refreshToken(request: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-    const response = await this.api.post<RefreshTokenResponse>('/api/auth/refresh', request);
-    return response.data;
+  async getCurrentUser(): Promise<User> {
+    return await apiClient.get('/api/users/me').then(response => response.data)
+  }
+
+  async validateToken(): Promise<User | null> {
+    try {
+      const token = TokenStorage.getToken()
+      if (!token) {
+        return null
+      }
+
+      // Validate token by calling /api/users/me
+      const user = await this.getCurrentUser()
+      return user
+    } catch (error) {
+      console.error('Token validation failed:', error)
+      // Clear invalid tokens
+      TokenStorage.removeToken()
+      TokenStorage.removeRefreshToken()
+      return null
+    }
   }
 
   isAuthenticated(): boolean {
-    return TokenStorage.getToken() !== null;
+    return TokenStorage.getToken() !== null
   }
 
   getToken(): string | null {
-    return TokenStorage.getToken();
+    return TokenStorage.getToken()
+  }
+
+  getRefreshToken(): string | null {
+    return TokenStorage.getRefreshToken()
   }
 }
 
-// Create singleton instance
-const authService = new AuthService('http://192.168.33.126:8000');
-
-export default authService;
+export const authService = new AuthService()

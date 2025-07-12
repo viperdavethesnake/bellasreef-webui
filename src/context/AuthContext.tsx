@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { AuthState, User } from '../types/auth';
-import authService from '../services/auth';
-import { TokenStorage } from '../utils/storage';
+import { authService } from '../services/auth';
 
 // Action types
 type AuthAction =
@@ -9,7 +8,10 @@ type AuthAction =
   | { type: 'LOGIN_SUCCESS'; payload: { user: User; token: string } }
   | { type: 'LOGIN_FAILURE'; payload: string }
   | { type: 'LOGOUT' }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'VALIDATION_START' }
+  | { type: 'VALIDATION_SUCCESS'; payload: { user: User; token: string } }
+  | { type: 'VALIDATION_FAILURE' };
 
 // Initial state
 const initialState: AuthState = {
@@ -47,6 +49,29 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         loading: false,
         error: action.payload,
       };
+    case 'VALIDATION_START':
+      return {
+        ...state,
+        loading: true,
+      };
+    case 'VALIDATION_SUCCESS':
+      return {
+        ...state,
+        isAuthenticated: true,
+        user: action.payload.user,
+        token: action.payload.token,
+        loading: false,
+        error: null,
+      };
+    case 'VALIDATION_FAILURE':
+      return {
+        ...state,
+        isAuthenticated: false,
+        user: null,
+        token: null,
+        loading: false,
+        error: null,
+      };
     case 'LOGOUT':
       return {
         ...state,
@@ -83,16 +108,29 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Check for existing token on mount
+  // Validate existing token on mount
   useEffect(() => {
-    const token = TokenStorage.getToken();
-    if (token) {
-      // TODO: Validate token with server
-      // For now, assume token is valid
-      dispatch({ type: 'LOGIN_SUCCESS', payload: { user: { id: 1, username: 'bellas', is_admin: true }, token } });
-    } else {
-      dispatch({ type: 'LOGOUT' });
-    }
+    const validateExistingToken = async () => {
+      dispatch({ type: 'VALIDATION_START' });
+      
+      try {
+        const user = await authService.validateToken();
+        if (user) {
+          const token = authService.getToken();
+          dispatch({
+            type: 'VALIDATION_SUCCESS',
+            payload: { user, token: token! },
+          });
+        } else {
+          dispatch({ type: 'VALIDATION_FAILURE' });
+        }
+      } catch (error) {
+        console.error('Token validation error:', error);
+        dispatch({ type: 'VALIDATION_FAILURE' });
+      }
+    };
+
+    validateExistingToken();
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -100,12 +138,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     try {
       const response = await authService.login({ username, password });
+      const user = await authService.getCurrentUser();
+      
       dispatch({
         type: 'LOGIN_SUCCESS',
-        payload: { user: response.user, token: response.access_token },
+        payload: { user, token: response.access_token },
       });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Login failed';
+      const errorMessage = error.response?.data?.detail || error.message || 'Login failed';
       dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
     }
   };

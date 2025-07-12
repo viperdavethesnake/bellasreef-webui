@@ -2,61 +2,45 @@ import CryptoJS from 'crypto-js';
 
 const SECRET_KEY = 'bellas-reef-secret-key';
 
+// Token storage utility
 export class TokenStorage {
+  private static readonly TOKEN_KEY = 'bellas_reef_access_token';
+  private static readonly REFRESH_TOKEN_KEY = 'bellas_reef_refresh_token';
+
+  // Access token methods
   static setToken(token: string): void {
-    try {
-      const encrypted = CryptoJS.AES.encrypt(token, SECRET_KEY).toString();
-      localStorage.setItem('bellas_reef_token', encrypted);
-    } catch (error) {
-      console.error('Token storage failed:', error);
-    }
+    localStorage.setItem(this.TOKEN_KEY, token);
   }
 
   static getToken(): string | null {
-    try {
-      const encrypted = localStorage.getItem('bellas_reef_token');
-      if (!encrypted) return null;
-      
-      const decrypted = CryptoJS.AES.decrypt(encrypted, SECRET_KEY);
-      return decrypted.toString(CryptoJS.enc.Utf8);
-    } catch (error) {
-      console.error('Token retrieval failed:', error);
-      return null;
-    }
+    return localStorage.getItem(this.TOKEN_KEY);
   }
 
   static removeToken(): void {
-    localStorage.removeItem('bellas_reef_token');
+    localStorage.removeItem(this.TOKEN_KEY);
   }
 
+  // Refresh token methods
   static setRefreshToken(token: string): void {
-    try {
-      const encrypted = CryptoJS.AES.encrypt(token, SECRET_KEY).toString();
-      localStorage.setItem('bellas_reef_refresh_token', encrypted);
-    } catch (error) {
-      console.error('Refresh token storage failed:', error);
-    }
+    localStorage.setItem(this.REFRESH_TOKEN_KEY, token);
   }
 
   static getRefreshToken(): string | null {
-    try {
-      const encrypted = localStorage.getItem('bellas_reef_refresh_token');
-      if (!encrypted) return null;
-      
-      const decrypted = CryptoJS.AES.decrypt(encrypted, SECRET_KEY);
-      return decrypted.toString(CryptoJS.enc.Utf8);
-    } catch (error) {
-      console.error('Refresh token retrieval failed:', error);
-      return null;
-    }
+    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
 
   static removeRefreshToken(): void {
-    localStorage.removeItem('bellas_reef_refresh_token');
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
   }
 
+  // Clear all tokens
   static clearAll(): void {
     this.removeToken();
     this.removeRefreshToken();
+  }
+
+  // Check if user has any tokens
+  static hasTokens(): boolean {
+    return this.getToken() !== null || this.getRefreshToken() !== null;
   }
 }

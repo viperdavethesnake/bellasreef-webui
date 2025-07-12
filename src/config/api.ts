@@ -2,13 +2,13 @@
 export const API_CONFIG = {
   // Development: Connect to Pi5 backend
   development: {
-    baseURL: 'http://192.168.1.100:8000', // Replace with your Pi5 IP
+    baseURL: 'http://192.168.33.126:8000',
     timeout: 10000,
     retries: 3,
   },
   // Production: Same backend, different config
   production: {
-    baseURL: 'http://localhost:8000', // Local to Pi
+    baseURL: 'http://192.168.33.126:8000', // Local to Pi
     timeout: 5000,
     retries: 2,
   }
@@ -20,11 +20,24 @@ export const currentConfig = isDev ? API_CONFIG.development : API_CONFIG.product
 
 // API Endpoints
 export const API_ENDPOINTS = {
+  // Authentication
+  auth: {
+    login: '/api/auth/login',
+    refresh: '/api/auth/refresh',
+    logout: '/api/auth/logout',
+  },
+  
+  // User Management
+  users: {
+    me: '/api/users/me',
+  },
+  
   // System Status
   system: {
     status: '/api/system/status',
-    health: '/api/system/health',
-    info: '/api/system/info',
+    health: '/health',
+    info: '/api/host-info',
+    usage: '/api/system-usage',
   },
   
   // Lighting Control
@@ -69,7 +82,7 @@ export const API_ENDPOINTS = {
   
   // Real-time Updates
   websocket: {
-    url: isDev ? 'ws://192.168.1.100:8000/ws' : 'ws://localhost:8000/ws',
+    url: isDev ? 'ws://192.168.33.126:8000/ws' : 'ws://192.168.33.126:8000/ws',
     reconnectInterval: 5000,
   }
 }
