@@ -14,7 +14,7 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-reef-600 hover:bg-reef-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105;
   }
   
   .btn-secondary {
@@ -22,7 +22,7 @@
   }
   
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200;
   }
   
   .nav-link {
@@ -30,7 +30,7 @@
   }
   
   .nav-link.active {
-    @apply bg-reef-100 text-reef-700;
+    @apply bg-blue-50 text-blue-700 border-r-2 border-blue-500;
   }
   
   .nav-link:not(.active) {

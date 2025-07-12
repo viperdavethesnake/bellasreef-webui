@@ -1,25 +1,36 @@
-import { Routes, Route } from 'react-router-dom'
-import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
-import Lighting from './pages/Lighting'
-import Temperature from './pages/Temperature'
-import Flow from './pages/Flow'
-import Outlets from './pages/Outlets'
-import Settings from './pages/Settings'
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import Layout from './components/Layout';
+import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard';
+import Monitor from './pages/Monitor';
+import Settings from './pages/Settings';
 
 function App() {
   return (
-    <Layout>
+    <AuthProvider>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/lighting" element={<Lighting />} />
-        <Route path="/temperature" element={<Temperature />} />
-        <Route path="/flow" element={<Flow />} />
-        <Route path="/outlets" element={<Outlets />} />
-        <Route path="/settings" element={<Settings />} />
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Protected routes */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="monitor" element={<Monitor />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+        
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-    </Layout>
-  )
+    </AuthProvider>
+  );
 }
 
-export default App 
+export default App; 
