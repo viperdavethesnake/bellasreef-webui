@@ -6,10 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "start": "vite preview --host 0.0.0.0 --port 3000",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "pi:install": "NODE_OPTIONS='--max-old-space-size=2048' npm install",
+    "pi:build": "NODE_OPTIONS='--max-old-space-size=2048' npm run build",
+    "pi:dev": "NODE_OPTIONS='--max-old-space-size=1024' npm run dev"
   },
   "dependencies": {
     "react": "^18.2.0",
