@@ -1,20 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { Thermometer, Zap, Activity, Settings } from 'lucide-react';
-import Temperature from './Temperature';
-import Outlets from './Outlets';
-import SystemHealth from './SystemHealth';
-import HALPWM from './HALPWM';
+import { Sun, Settings } from 'lucide-react';
+import Lighting from './Lighting';
+import LightingSettings from './LightingSettings';
 
-const monitorTabs = [
-  { name: 'Temperature', href: '/monitor/temperature', icon: Thermometer },
-  { name: 'Smart Outlets', href: '/monitor/outlets', icon: Zap },
-  { name: 'System Health', href: '/monitor/health', icon: Activity },
-  { name: 'HAL PWM', href: '/monitor/hal', icon: Settings },
+const lightingTabs = [
+  { name: 'Control', href: '/lighting', icon: Sun },
+  { name: 'Settings', href: '/lighting/settings', icon: Settings },
 ];
 
 // Error Boundary Component
-class MonitorErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+class LightingErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
   constructor(props: any) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -23,13 +19,13 @@ class MonitorErrorBoundary extends React.Component<{children: React.ReactNode}, 
     return { hasError: true, error };
   }
   componentDidCatch(error: any, info: any) {
-    console.error('Monitor page crashed:', error, info);
+    console.error('Lighting page crashed:', error, info);
   }
   render() {
     if (this.state.hasError) {
       return (
         <div className="p-6 text-red-600">
-          <h2 className="text-2xl font-bold mb-2">Monitor Page Error</h2>
+          <h2 className="text-2xl font-bold mb-2">Lighting Page Error</h2>
           <pre>{this.state.error?.toString()}</pre>
           <p>Check the browser console for more details.</p>
         </div>
@@ -39,22 +35,21 @@ class MonitorErrorBoundary extends React.Component<{children: React.ReactNode}, 
   }
 }
 
-export default function Monitor() {
+export default function LightingWrapper() {
   const location = useLocation();
-  console.log('Rendering Monitor page, location:', location.pathname);
 
   return (
-    <MonitorErrorBoundary>
+    <LightingErrorBoundary>
       <div className="space-y-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">System Monitor</h1>
-          <p className="text-gray-600 mt-2">Detailed monitoring and control panels</p>
+          <h1 className="text-3xl font-bold text-gray-900">Lighting System</h1>
+          <p className="text-gray-600 mt-2">Control and configure your aquarium lighting</p>
         </div>
 
-        {/* Monitor Navigation Tabs */}
+        {/* Lighting Navigation Tabs */}
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
-            {monitorTabs.map((tab) => {
+            {lightingTabs.map((tab) => {
               const isActive = location.pathname === tab.href;
               return (
                 <Link
@@ -73,14 +68,12 @@ export default function Monitor() {
             })}
           </nav>
         </div>
+        
         <Routes>
-          <Route index element={<Navigate to="temperature" replace />} />
-          <Route path="temperature" element={<Temperature />} />
-          <Route path="outlets" element={<Outlets />} />
-          <Route path="health" element={<SystemHealth />} />
-          <Route path="hal" element={<HALPWM />} />
+          <Route index element={<Lighting />} />
+          <Route path="settings" element={<LightingSettings />} />
         </Routes>
       </div>
-    </MonitorErrorBoundary>
+    </LightingErrorBoundary>
   );
-}
+} 

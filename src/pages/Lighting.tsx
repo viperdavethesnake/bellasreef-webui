@@ -1,14 +1,9 @@
-import { Sun, Moon, Clock, Settings } from 'lucide-react'
+import { Sun, Moon, Clock, Settings, MapPin, Cloud } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export default function Lighting() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Lighting Control</h1>
-        <p className="mt-2 text-gray-600">
-          Manage LED lighting schedules and intensity
-        </p>
-      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Current Status */}
@@ -46,10 +41,10 @@ export default function Lighting() {
               <Clock className="h-4 w-4 mr-2" />
               Custom
             </button>
-            <button className="btn-secondary">
+            <Link to="/lighting/settings" className="btn-secondary">
               <Settings className="h-4 w-4 mr-2" />
               Settings
-            </button>
+            </Link>
           </div>
         </div>
       </div>

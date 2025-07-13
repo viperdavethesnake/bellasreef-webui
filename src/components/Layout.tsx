@@ -4,6 +4,7 @@ import {
   Home, 
   Monitor,
   Settings,
+  Sun,
   LogOut
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -15,6 +16,7 @@ interface LayoutProps {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Monitor', href: '/monitor', icon: Monitor },
+  { name: 'Lighting', href: '/lighting', icon: Sun },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

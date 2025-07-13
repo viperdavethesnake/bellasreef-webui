@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import Monitor from './pages/Monitor';
 import Settings from './pages/Settings';
+import LightingWrapper from './pages/LightingWrapper';
 
 function App() {
   return (
@@ -22,7 +23,8 @@ function App() {
         }>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="monitor" element={<Monitor />} />
+          <Route path="monitor/*" element={<Monitor />} />
+          <Route path="lighting/*" element={<LightingWrapper />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         

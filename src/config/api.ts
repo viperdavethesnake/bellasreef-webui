@@ -18,69 +18,79 @@ export const API_CONFIG = {
 const isDev = import.meta.env.DEV
 export const currentConfig = isDev ? API_CONFIG.development : API_CONFIG.production
 
-// API Endpoints
+// API Endpoints - Updated to match actual backend services
 export const API_ENDPOINTS = {
-  // Authentication
+  // Authentication (Core Service - Port 8000)
   auth: {
     login: '/api/auth/login',
     refresh: '/api/auth/refresh',
     logout: '/api/auth/logout',
   },
   
-  // User Management
+  // User Management (Core Service - Port 8000)
   users: {
     me: '/api/users/me',
   },
   
-  // System Status
+  // System Status (Core Service - Port 8000)
   system: {
-    status: '/api/system/status',
+    status: '/health', // Use health endpoint for system status
     health: '/health',
     info: '/api/host-info',
     usage: '/api/system-usage',
   },
   
-  // Lighting Control
+  // Lighting Control (Lighting Service - Port 8001)
   lighting: {
-    status: '/api/lighting/status',
-    control: '/api/lighting/control',
-    schedule: '/api/lighting/schedule',
-    modes: '/api/lighting/modes',
+    status: 'http://192.168.33.126:8001/lighting/acclimation-periods/system/info',
+    control: 'http://192.168.33.126:8001/lighting/acclimation-periods/',
+    schedule: 'http://192.168.33.126:8001/lighting/acclimation-periods/',
+    modes: 'http://192.168.33.126:8001/lighting/acclimation-periods/',
   },
   
-  // Temperature Management
+  // HAL Management (HAL Service - Port 8003)
+  hal: {
+    status: 'http://192.168.33.126:8003/health',
+    controllers: 'http://192.168.33.126:8003/api/hal/controllers',
+    discover: 'http://192.168.33.126:8003/api/hal/controllers/discover',
+    register: 'http://192.168.33.126:8003/api/hal/controllers/register',
+    channels: 'http://192.168.33.126:8003/api/hal/channels',
+    channelControl: 'http://192.168.33.126:8003/api/hal/channels/channel',
+  },
+  
+  // Temperature Management (Temperature Service - Port 8004)
   temperature: {
-    current: '/api/temperature/current',
-    target: '/api/temperature/target',
-    history: '/api/temperature/history',
-    control: '/api/temperature/control',
+    current: 'http://192.168.33.126:8004/api/probes/',
+    target: 'http://192.168.33.126:8004/api/probes/system/status',
+    history: 'http://192.168.33.126:8004/api/probes/',
+    control: 'http://192.168.33.126:8004/api/probes/system/status',
   },
   
-  // Flow Control
+  // Flow Control (Flow Service - Port 8002)
   flow: {
-    status: '/api/flow/status',
-    control: '/api/flow/control',
-    pumps: '/api/flow/pumps',
-    patterns: '/api/flow/patterns',
+    status: 'http://192.168.33.126:8002/health',
+    control: 'http://192.168.33.126:8002/',
+    pumps: 'http://192.168.33.126:8002/',
+    patterns: 'http://192.168.33.126:8002/',
   },
   
-  // Smart Outlets
+  // Smart Outlets (SmartOutlets Service - Port 8005)
   outlets: {
-    status: '/api/outlets/status',
-    control: '/api/outlets/control',
-    power: '/api/outlets/power',
-    schedule: '/api/outlets/schedule',
+    status: 'http://192.168.33.126:8005/api/smartoutlets/outlets/',
+    control: 'http://192.168.33.126:8005/api/smartoutlets/outlets/',
+    power: 'http://192.168.33.126:8005/api/smartoutlets/outlets/',
+    schedule: 'http://192.168.33.126:8005/api/smartoutlets/outlets/',
   },
   
-  // Settings & Configuration
+  // Settings & Configuration (Core Service - Port 8000)
   settings: {
-    system: '/api/settings/system',
-    network: '/api/settings/network',
-    security: '/api/settings/security',
-    backup: '/api/settings/backup',
+    system: '/api/host-info', // Use host-info for system settings
+    network: '/api/host-info',
+    security: '/api/host-info',
+    backup: '/api/host-info',
   },
   
-  // Real-time Updates
+  // Real-time Updates (Core Service - Port 8000)
   websocket: {
     url: isDev ? 'ws://192.168.33.126:8000/ws' : 'ws://192.168.33.126:8000/ws',
     reconnectInterval: 5000,
@@ -89,5 +99,9 @@ export const API_ENDPOINTS = {
 
 // Helper function to get full API URL
 export const getApiUrl = (endpoint: string): string => {
+  // If endpoint is already a full URL, return it
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint
+  }
   return `${currentConfig.baseURL}${endpoint}`
 } 

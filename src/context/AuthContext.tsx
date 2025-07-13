@@ -93,7 +93,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 
 // Context
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, apiUrl?: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -133,11 +133,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     validateExistingToken();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, apiUrl?: string) => {
     dispatch({ type: 'LOGIN_START' });
     
     try {
-      const response = await authService.login({ username, password });
+      const response = await authService.login({ username, password }, apiUrl);
       const user = await authService.getCurrentUser();
       
       dispatch({

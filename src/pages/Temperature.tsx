@@ -1,13 +1,86 @@
-import { Thermometer, Snowflake, Flame, AlertTriangle } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { Thermometer, Snowflake, Flame, AlertTriangle } from 'lucide-react';
+import { ApiService } from '../services/api';
+
+interface TemperatureData {
+  current: number;
+  target: number;
+  min: number;
+  max: number;
+  heater: string;
+  chiller: string;
+}
 
 export default function Temperature() {
-  const tempData = {
+  const [tempData, setTempData] = useState<TemperatureData>({
     current: 78.2,
     target: 78.0,
     min: 75.0,
     max: 82.0,
-    heater: 'On',
+    heater: 'Off',
     chiller: 'Off'
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTemperatureData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch current temperature
+        const currentResponse = await ApiService.getCurrentTemperature();
+        const currentData = currentResponse.data;
+        
+        // Fetch target temperature
+        const targetResponse = await ApiService.getTemperatureTarget();
+        const targetData = targetResponse.data;
+        
+        setTempData({
+          current: currentData.temperature || 78.2,
+          target: targetData.target || 78.0,
+          min: currentData.min_temp || 75.0,
+          max: currentData.max_temp || 82.0,
+          heater: currentData.heater_status || 'Off',
+          chiller: currentData.chiller_status || 'Off'
+        });
+      } catch (err: any) {
+        setError('Failed to load temperature data');
+        console.error('Temperature fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTemperatureData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Temperature Control</h1>
+          <p className="mt-2 text-gray-600">
+            Monitor and control heating and cooling systems
+          </p>
+        </div>
+        <div className="text-center text-gray-500">Loading temperature data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Temperature Control</h1>
+          <p className="mt-2 text-gray-600">
+            Monitor and control heating and cooling systems
+          </p>
+        </div>
+        <div className="text-center text-red-500">{error}</div>
+      </div>
+    );
   }
 
   return (
@@ -87,19 +160,21 @@ export default function Temperature() {
       </div>
 
       {/* Alerts */}
-      <div className="card border-l-4 border-l-yellow-500">
-        <div className="flex items-center">
-          <AlertTriangle className="h-5 w-5 text-yellow-500 mr-3" />
-          <div>
-            <h3 className="text-sm font-medium text-yellow-800">
-              Temperature Alert
-            </h3>
-            <p className="text-sm text-yellow-700">
-              Temperature is slightly above target. Monitoring closely.
-            </p>
+      {tempData.current > tempData.target + 1 || tempData.current < tempData.target - 1 ? (
+        <div className="card border-l-4 border-l-yellow-500">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-yellow-500 mr-3" />
+            <div>
+              <h3 className="text-sm font-medium text-yellow-800">
+                Temperature Alert
+              </h3>
+              <p className="text-sm text-yellow-700">
+                Temperature is outside target range. Monitoring closely.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 } 

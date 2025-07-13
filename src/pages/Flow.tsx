@@ -1,11 +1,97 @@
-import { Activity, Gauge, Settings, Play, Pause } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { Activity, Gauge, Settings, Play, Pause } from 'lucide-react';
+import { ApiService } from '../services/api';
+
+interface FlowData {
+  mainPump: { status: string; speed: number; flow: string };
+  returnPump: { status: string; speed: number; flow: string };
+  powerheads: { status: string; speed: number; flow: string };
+  totalFlow: string;
+}
 
 export default function Flow() {
-  const flowData = {
-    mainPump: { status: 'On', speed: 75, flow: '1200 LPH' },
-    returnPump: { status: 'On', speed: 60, flow: '800 LPH' },
-    powerheads: { status: 'On', speed: 80, flow: '2000 LPH' },
-    totalFlow: '4000 LPH'
+  const [flowData, setFlowData] = useState<FlowData>({
+    mainPump: { status: 'Off', speed: 0, flow: '0 LPH' },
+    returnPump: { status: 'Off', speed: 0, flow: '0 LPH' },
+    powerheads: { status: 'Off', speed: 0, flow: '0 LPH' },
+    totalFlow: '0 LPH'
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFlowData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch flow status
+        const flowResponse = await ApiService.getFlowStatus();
+        const flowData = flowResponse.data;
+        
+        // Fetch pump status
+        const pumpsResponse = await ApiService.getPumpStatus();
+        const pumpsData = pumpsResponse.data;
+        
+        // Transform API data to match UI structure
+        const mainPump = pumpsData.pumps?.find((pump: any) => pump.name?.toLowerCase().includes('main')) || {};
+        const returnPump = pumpsData.pumps?.find((pump: any) => pump.name?.toLowerCase().includes('return')) || {};
+        const powerheads = pumpsData.pumps?.find((pump: any) => pump.name?.toLowerCase().includes('powerhead')) || {};
+        
+        setFlowData({
+          mainPump: {
+            status: mainPump.status || 'Off',
+            speed: mainPump.speed || 0,
+            flow: mainPump.flow_rate ? `${mainPump.flow_rate} LPH` : '0 LPH'
+          },
+          returnPump: {
+            status: returnPump.status || 'Off',
+            speed: returnPump.speed || 0,
+            flow: returnPump.flow_rate ? `${returnPump.flow_rate} LPH` : '0 LPH'
+          },
+          powerheads: {
+            status: powerheads.status || 'Off',
+            speed: powerheads.speed || 0,
+            flow: powerheads.flow_rate ? `${powerheads.flow_rate} LPH` : '0 LPH'
+          },
+          totalFlow: flowData.total_flow ? `${flowData.total_flow} LPH` : '0 LPH'
+        });
+      } catch (err: any) {
+        setError('Failed to load flow data');
+        console.error('Flow fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFlowData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Flow Control</h1>
+          <p className="mt-2 text-gray-600">
+            Manage circulation pumps and flow rates
+          </p>
+        </div>
+        <div className="text-center text-gray-500">Loading flow data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Flow Control</h1>
+          <p className="mt-2 text-gray-600">
+            Manage circulation pumps and flow rates
+          </p>
+        </div>
+        <div className="text-center text-red-500">{error}</div>
+      </div>
+    );
   }
 
   return (
