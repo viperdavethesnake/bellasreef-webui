@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, AlertTriangle, CheckCircle, Clock, Database } from 'lucide-react';
 import { ApiService } from '../services/api';
+import { 
+  PageHeader, 
+  Card, 
+  StatusCard, 
+  MetricCard, 
+  Badge,
+  DataLoadingWrapper,
+  ErrorState
+} from '../components';
 
 interface SystemHealthData {
   status: string;
@@ -163,78 +172,47 @@ export default function SystemHealth() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">System Health</h1>
-          <p className="mt-2 text-gray-600">
-            Monitor system status and service health
-          </p>
-        </div>
-        <div className="text-center text-gray-500">Loading system health data...</div>
-      </div>
-    );
-  }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">System Health</h1>
-          <p className="mt-2 text-gray-600">
-            Monitor system status and service health
-          </p>
-        </div>
-        <div className="card border-l-4 border-l-red-500 bg-red-50">
-          <div className="flex items-center">
-            <AlertTriangle className="h-5 w-5 text-red-500 mr-3" />
-            <div>
-              <h3 className="text-sm font-medium text-red-800">Error Loading System Health</h3>
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">System Health</h1>
-        <p className="mt-2 text-gray-600">
-          Monitor system status and service health
-        </p>
-      </div>
+      <DataLoadingWrapper
+        isLoading={loading}
+        error={error}
+        loadingText="Loading system health data..."
+        errorTitle="Failed to load system health"
+        errorMessage="Unable to load system health data. Please check your connection and try again."
+        errorAction={
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        }
+      >
+        <PageHeader
+          title="System Health"
+          description="Monitor system status and service health"
+          statusIndicator={{
+            status: healthData.status as 'healthy' | 'error' | 'warning' | 'unknown',
+            text: healthData.status === 'healthy' ? 'All Systems Operational' : 
+                  healthData.status === 'degraded' ? 'Some Systems Degraded' : 'System Issues Detected'
+          }}
+        />
 
       {/* Overall System Status */}
-      <div className={`card border-l-4 ${
-        healthData.status === 'healthy' 
-          ? 'border-l-green-500 bg-green-50' 
-          : healthData.status === 'degraded'
-          ? 'border-l-yellow-500 bg-yellow-50'
-          : 'border-l-red-500 bg-red-50'
-      }`}>
+      <StatusCard
+        status={healthData.status === 'healthy' ? 'success' : 
+               healthData.status === 'degraded' ? 'warning' : 'error'}
+      >
         <div className="flex items-center">
           {getStatusIcon(healthData.status)}
           <div className="ml-3">
-            <h3 className={`text-lg font-medium ${
-              healthData.status === 'healthy' 
-                ? 'text-green-800' 
-                : healthData.status === 'degraded'
-                ? 'text-yellow-800'
-                : 'text-red-800'
-            }`}>
+            <h3 className="text-lg font-medium text-gray-900">
               System Status: {healthData.status.charAt(0).toUpperCase() + healthData.status.slice(1)}
             </h3>
-            <p className={`text-sm ${
-              healthData.status === 'healthy' 
-                ? 'text-green-700' 
-                : healthData.status === 'degraded'
-                ? 'text-yellow-700'
-                : 'text-red-700'
-            }`}>
+            <p className="text-sm text-gray-600">
               {healthData.status === 'healthy' 
                 ? 'All systems are operating normally'
                 : healthData.status === 'degraded'
@@ -244,10 +222,10 @@ export default function SystemHealth() {
             </p>
           </div>
         </div>
-      </div>
+      </StatusCard>
 
       {/* Service Status */}
-      <div className="card">
+      <Card>
         <h3 className="text-lg font-medium text-gray-900 mb-4">Service Status</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(healthData.services).map(([service, status]) => (
@@ -257,105 +235,85 @@ export default function SystemHealth() {
                   <h4 className="text-sm font-medium text-gray-900 capitalize">
                     {service.replace('_', ' ')}
                   </h4>
-                  <p className={`text-sm font-medium ${getStatusColor(status)}`}>
+                  <Badge variant={status === 'healthy' ? 'success' : status === 'error' ? 'error' : 'default'}>
                     {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </p>
+                  </Badge>
                 </div>
                 {getStatusIcon(status)}
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* System Metrics */}
-      <div className="card">
+      <Card>
         <h3 className="text-lg font-medium text-gray-900 mb-4">System Metrics</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{healthData.cpuPercent.toFixed(1)}%</div>
-            <div className="text-sm text-gray-600">CPU Usage</div>
-            <div className={`text-xs mt-1 ${
-              healthData.cpuPercent > 80 ? 'text-red-600' : 
-              healthData.cpuPercent > 60 ? 'text-yellow-600' : 'text-green-600'
-            }`}>
-              {healthData.cpuPercent > 80 ? 'High' : 
-               healthData.cpuPercent > 60 ? 'Moderate' : 'Normal'}
-            </div>
-          </div>
+          <MetricCard
+            title="CPU Usage"
+            value={`${healthData.cpuPercent.toFixed(1)}%`}
+            subtitle={healthData.cpuPercent > 80 ? 'High' : 
+                     healthData.cpuPercent > 60 ? 'Moderate' : 'Normal'}
+            trend={healthData.cpuPercent > 80 ? 'down' : 'neutral'}
+          />
           
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{healthData.memoryPercent.toFixed(1)}%</div>
-            <div className="text-sm text-gray-600">Memory Usage</div>
-            <div className={`text-xs mt-1 ${
-              healthData.memoryPercent > 80 ? 'text-red-600' : 
-              healthData.memoryPercent > 60 ? 'text-yellow-600' : 'text-green-600'
-            }`}>
-              {healthData.memoryPercent > 80 ? 'High' : 
-               healthData.memoryPercent > 60 ? 'Moderate' : 'Normal'}
-            </div>
-          </div>
+          <MetricCard
+            title="Memory Usage"
+            value={`${healthData.memoryPercent.toFixed(1)}%`}
+            subtitle={healthData.memoryPercent > 80 ? 'High' : 
+                     healthData.memoryPercent > 60 ? 'Moderate' : 'Normal'}
+            trend={healthData.memoryPercent > 80 ? 'down' : 'neutral'}
+          />
           
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{healthData.diskPercent.toFixed(1)}%</div>
-            <div className="text-sm text-gray-600">Disk Usage</div>
-            <div className={`text-xs mt-1 ${
-              healthData.diskPercent > 80 ? 'text-red-600' : 
-              healthData.diskPercent > 60 ? 'text-yellow-600' : 'text-green-600'
-            }`}>
-              {healthData.diskPercent > 80 ? 'High' : 
-               healthData.diskPercent > 60 ? 'Moderate' : 'Normal'}
-            </div>
-          </div>
+          <MetricCard
+            title="Disk Usage"
+            value={`${healthData.diskPercent.toFixed(1)}%`}
+            subtitle={healthData.diskPercent > 80 ? 'High' : 
+                     healthData.diskPercent > 60 ? 'Moderate' : 'Normal'}
+            trend={healthData.diskPercent > 80 ? 'down' : 'neutral'}
+          />
           
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-600">
-              <Clock className="h-6 w-6 mx-auto mb-1" />
-            </div>
-            <div className="text-sm text-gray-600">Uptime</div>
-            <div className="text-xs mt-1 text-gray-500">{healthData.uptime}</div>
-          </div>
+          <MetricCard
+            title="Uptime"
+            value={healthData.uptime}
+            icon={Clock}
+            trend="neutral"
+          />
         </div>
-      </div>
+      </Card>
 
       {/* Alerts */}
       {healthData.alerts.length > 0 ? (
-        <div className="card">
+        <Card>
           <h3 className="text-lg font-medium text-gray-900 mb-4">Active Alerts</h3>
           <div className="space-y-3">
             {healthData.alerts.map((alert) => (
-              <div key={alert.id} className={`p-3 rounded-lg border-l-4 ${
-                alert.level === 'error' ? 'border-l-red-500 bg-red-50' :
-                alert.level === 'warning' ? 'border-l-yellow-500 bg-yellow-50' :
-                'border-l-blue-500 bg-blue-50'
-              }`}>
+              <StatusCard
+                key={alert.id}
+                status={alert.level === 'error' ? 'error' : 
+                       alert.level === 'warning' ? 'warning' : 'info'}
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${
-                      alert.level === 'error' ? 'text-red-800' :
-                      alert.level === 'warning' ? 'text-yellow-800' :
-                      'text-blue-800'
-                    }`}>
+                    <p className="text-sm font-medium text-gray-900">
                       {alert.message}
                     </p>
                     <p className="text-xs text-gray-600 mt-1">
                       {new Date(alert.timestamp).toLocaleString()}
                     </p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    alert.level === 'error' ? 'bg-red-100 text-red-800' :
-                    alert.level === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
+                  <Badge variant={alert.level === 'error' ? 'error' : 
+                                 alert.level === 'warning' ? 'warning' : 'info'}>
                     {alert.level.toUpperCase()}
-                  </span>
+                  </Badge>
                 </div>
-              </div>
+              </StatusCard>
             ))}
           </div>
-        </div>
+        </Card>
       ) : (
-        <div className="card border-l-4 border-l-green-500 bg-green-50">
+        <StatusCard status="success">
           <div className="flex items-center">
             <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
             <div>
@@ -363,8 +321,9 @@ export default function SystemHealth() {
               <p className="text-sm text-green-700">All systems are operating normally</p>
             </div>
           </div>
-        </div>
+        </StatusCard>
       )}
+      </DataLoadingWrapper>
     </div>
   );
 }

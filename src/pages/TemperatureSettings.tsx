@@ -15,6 +15,16 @@ import { ApiService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { TokenStorage } from '../utils/storage';
+import { 
+  Modal, 
+  Input, 
+  Select, 
+  Checkbox, 
+  FormSection, 
+  FormRow, 
+  FormActions,
+  Button 
+} from '../components';
 
 interface TemperatureProbe {
   id: string;
@@ -48,46 +58,41 @@ export default function TemperatureSettings() {
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProbeData, setEditingProbeData] = useState<any>(null);
+  const [registrationFormData, setRegistrationFormData] = useState({
+    name: '',
+    role: 'tank_monitor',
+    unit: 'F',
+    min_value: 68,
+    max_value: 86,
+    poll_enabled: true,
+    poll_interval: 60
+  });
 
   useEffect(() => {
     // Fetch service health on mount
-    fetch('http://192.168.33.126:8004/health')
-      .then(res => res.json())
-      .then(data => setServiceHealth({ status: data.status, version: data.version, timestamp: data.timestamp }))
+    ApiService.getTemperatureServiceHealth()
+      .then(res => setServiceHealth({ status: res.data.status, version: res.data.version, timestamp: res.data.timestamp }))
       .catch(() => setServiceHealth(null));
     
     // Fetch subsystem status (requires auth)
-    const token = TokenStorage.getToken();
-    if (token) {
-      fetch('http://192.168.33.126:8004/api/probes/system/status', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => setSubsystemStatus(data))
+    if (isAuthenticated) {
+      ApiService.getTemperatureSubsystemStatus()
+        .then(res => setSubsystemStatus(res.data))
         .catch(() => setSubsystemStatus(null));
     } else {
       setSubsystemStatus(null);
     }
     
     loadTemperatureData();
-  }, []);
+  }, [isAuthenticated]);
 
   const loadTemperatureData = async () => {
     setLoading(true);
     setError(null);
     try {
       // Load registered probes from the correct endpoint
-      const response = await fetch('http://192.168.33.126:8004/api/probes/', {
-        headers: {
-          'Authorization': `Bearer ${TokenStorage.getToken()}`,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to load probes: ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const response = await ApiService.getCurrentTemperature();
+      const data = response.data;
       console.log('Registered probes response:', data);
       
       // Handle different possible response structures
@@ -105,18 +110,46 @@ export default function TemperatureSettings() {
       
       // Map probes and fetch temperature readings for each
       const probesWithReadings = await Promise.all(probes.map(async (probe: any) => {
-        const deviceId = probe.id;
+        // Use the correct integer device ID for API calls
+        const deviceId = probe.id || probe.device_id;
         let temperature = 0;
         let lastReading = probe.last_reading || probe.updated_at || new Date().toISOString();
         
+        console.log(`Processing probe:`, { 
+          name: probe.name, 
+          deviceId: deviceId, 
+          address: probe.address, 
+          hardware_id: probe.hardware_id 
+        });
+        
         try {
           // Fetch current temperature reading for this registered probe
-          const readingResponse = await ApiService.getRegisteredProbeReading(deviceId, 'F');
-          const readingData = readingResponse.data;
-          temperature = readingData.temperature || readingData.temp || 0;
-          lastReading = readingData.timestamp || readingData.last_reading || lastReading;
+          if (deviceId && typeof deviceId === 'number') {
+            const readingResponse = await ApiService.getRegisteredProbeReading(deviceId, 'F');
+            const readingData = readingResponse.data;
+            console.log(`Reading for probe ${deviceId}:`, readingData);
+            temperature = readingData.temperature || readingData.temp || 0;
+            lastReading = readingData.timestamp || readingData.last_reading || lastReading;
+          } else {
+            console.warn(`Invalid deviceId for probe ${probe.name}:`, deviceId);
+          }
         } catch (readingErr) {
           console.warn(`Failed to get reading for probe ${deviceId}:`, readingErr);
+          
+          // Fallback: try hardware reading endpoint
+          try {
+            const hardwareId = probe.address || probe.hardware_id;
+            if (hardwareId) {
+              console.log(`Trying hardware reading for ${hardwareId}`);
+              const hardwareResponse = await ApiService.getProbeReading(hardwareId, 'F');
+              const hardwareData = hardwareResponse.data;
+              console.log(`Hardware reading for ${hardwareId}:`, hardwareData);
+              temperature = hardwareData.temperature || hardwareData.temp || 0;
+              lastReading = hardwareData.timestamp || hardwareData.last_reading || lastReading;
+            }
+          } catch (hardwareErr) {
+            console.warn(`Failed to get hardware reading for ${probe.address}:`, hardwareErr);
+          }
         }
         
         return {
@@ -246,25 +279,11 @@ export default function TemperatureSettings() {
         max_value: customData.max_value || (customData.unit === "C" ? 30 : 86),
         poll_enabled: customData.poll_enabled !== undefined ? customData.poll_enabled : true,
         poll_interval: customData.poll_interval || 60,
-        is_active: true
+        active: true
       };
       
-      const response = await fetch('http://192.168.33.126:8004/api/probes/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${TokenStorage.getToken()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(registrationData)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Registration failed: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-      }
-      
-      const registeredDevice = await response.json();
-      console.log('Registration successful:', registeredDevice);
+      const response = await ApiService.registerProbe(registrationData);
+      console.log('Registration successful:', response.data);
       
       await loadTemperatureData();
       setDiscoveredProbes(prev => prev.filter(p => p.id !== probe.id));
@@ -273,7 +292,7 @@ export default function TemperatureSettings() {
       setSuccess('Probe registered successfully');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError(`Failed to register probe: ${err.message}`);
+      setError(`Failed to register probe: ${err.response?.data?.detail || err.message}`);
       console.error('Registration error:', err);
     }
   };
@@ -285,19 +304,7 @@ export default function TemperatureSettings() {
     }
 
     try {
-      const response = await fetch(`http://192.168.33.126:8004/api/probes/${probe.deviceId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${TokenStorage.getToken()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Update failed: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-      }
+      await ApiService.updateProbe(probe.deviceId, updateData);
       
       await loadTemperatureData();
       setShowEditModal(false);
@@ -306,7 +313,7 @@ export default function TemperatureSettings() {
       setSuccess('Probe updated successfully');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError(`Failed to update probe: ${err.message}`);
+      setError(`Failed to update probe: ${err.response?.data?.detail || err.message}`);
       console.error('Update error:', err);
     }
   };
@@ -322,23 +329,13 @@ export default function TemperatureSettings() {
     }
 
     try {
-      const response = await fetch(`http://192.168.33.126:8004/api/probes/${probe.deviceId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${TokenStorage.getToken()}`,
-        },
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Delete failed: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-      }
+      await ApiService.deleteProbe(probe.deviceId);
       
       await loadTemperatureData();
       setSuccess('Probe deleted successfully');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError(`Failed to delete probe: ${err.message}`);
+      setError(`Failed to delete probe: ${err.response?.data?.detail || err.message}`);
       console.error('Delete error:', err);
     }
   };
@@ -520,6 +517,15 @@ export default function TemperatureSettings() {
                   <button
                     onClick={() => {
                       setEditingProbe(probe);
+                      setRegistrationFormData({
+                        name: probe.name,
+                        role: 'tank_monitor',
+                        unit: 'F',
+                        min_value: 68,
+                        max_value: 86,
+                        poll_enabled: true,
+                        poll_interval: 60
+                      });
                       setShowRegistrationModal(true);
                     }}
                     className="btn-secondary flex items-center"
@@ -664,197 +670,113 @@ export default function TemperatureSettings() {
       </div>
 
       {/* Registration Modal */}
-      {showRegistrationModal && editingProbe && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Register Temperature Probe</h3>
-            <div className="space-y-4">
-              {/* Probe Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Probe Name *
-                </label>
-                <input
-                  type="text"
-                  defaultValue={editingProbe.name}
-                  id="probe-name"
-                  className="input-field w-full"
-                  placeholder="e.g., Main Tank, Sump, Display Tank"
-                />
-                <p className="text-xs text-gray-500 mt-1">A friendly name to identify this temperature sensor</p>
-              </div>
+      <Modal
+        isOpen={showRegistrationModal}
+        onClose={() => {
+          setShowRegistrationModal(false);
+          setEditingProbe(null);
+        }}
+        title="Register Temperature Probe"
+        size="lg"
+      >
+        <FormSection>
+          <Input
+            label="Probe Name *"
+            value={registrationFormData.name}
+            onChange={(e) => setRegistrationFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="e.g., Main Tank, Sump, Display Tank"
+            helperText="A friendly name to identify this temperature sensor"
+          />
+          
+          <Input
+            label="Device Address"
+            value={editingProbe?.id || ''}
+            readOnly
+            helperText="Hardware address cannot be changed"
+          />
+          
+          <Input
+            label="Role *"
+            value={registrationFormData.role}
+            onChange={(e) => setRegistrationFormData(prev => ({ ...prev, role: e.target.value }))}
+            placeholder="e.g., tank_monitor, sump, display"
+            helperText="The purpose or location of this sensor in your system"
+          />
+          
+          <Select
+            label="Temperature Unit"
+            value={registrationFormData.unit}
+            onChange={(e) => setRegistrationFormData(prev => ({ ...prev, unit: e.target.value }))}
+            options={[
+              { value: 'F', label: 'Fahrenheit (°F)' },
+              { value: 'C', label: 'Celsius (°C)' }
+            ]}
+          />
+          
+          <FormRow>
+            <Input
+              label="Min Temperature"
+              type="number"
+              value={registrationFormData.min_value}
+              onChange={(e) => setRegistrationFormData(prev => ({ ...prev, min_value: parseFloat(e.target.value) || 68 }))}
+              step="0.1"
+              min="50"
+              max="90"
+            />
+            <Input
+              label="Max Temperature"
+              type="number"
+              value={registrationFormData.max_value}
+              onChange={(e) => setRegistrationFormData(prev => ({ ...prev, max_value: parseFloat(e.target.value) || 86 }))}
+              step="0.1"
+              min="50"
+              max="90"
+            />
+          </FormRow>
+          
+          <Checkbox
+            label="Enable Polling"
+            checked={registrationFormData.poll_enabled}
+            onChange={(e) => setRegistrationFormData(prev => ({ ...prev, poll_enabled: e.target.checked }))}
+          />
+          
+          <Select
+            label="Poll Interval"
+            value={registrationFormData.poll_interval.toString()}
+            onChange={(e) => setRegistrationFormData(prev => ({ ...prev, poll_interval: parseInt(e.target.value) || 60 }))}
+            options={[
+              { value: '30', label: '30 seconds' },
+              { value: '60', label: '1 minute' },
+              { value: '300', label: '5 minutes' },
+              { value: '600', label: '10 minutes' }
+            ]}
+          />
+        </FormSection>
+        
+        <FormActions>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowRegistrationModal(false);
+              setEditingProbe(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (!registrationFormData.name || !registrationFormData.role) {
+                setError('Name and role are required');
+                return;
+              }
 
-              {/* Device Address */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Device Address
-                </label>
-                <input
-                  type="text"
-                  value={editingProbe.id}
-                  id="probe-address"
-                  className="input-field w-full bg-gray-100"
-                  placeholder="e.g., 28-0000123456ab"
-                  readOnly
-                />
-                <p className="text-xs text-gray-500 mt-1">Hardware address cannot be changed</p>
-              </div>
-
-              {/* Role */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role *
-                </label>
-                <input
-                  type="text"
-                  defaultValue="tank_monitor"
-                  id="probe-role"
-                  className="input-field w-full"
-                  placeholder="e.g., tank_monitor, sump, display"
-                />
-                <p className="text-xs text-gray-500 mt-1">The purpose or location of this sensor in your system</p>
-              </div>
-
-              {/* Temperature Unit */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Temperature Unit
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="temperature-unit"
-                      value="F"
-                      defaultChecked={true}
-                      id="unit-fahrenheit"
-                      className="mr-2"
-                    />
-                    Fahrenheit (°F)
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="temperature-unit"
-                      value="C"
-                      defaultChecked={false}
-                      id="unit-celsius"
-                      className="mr-2"
-                    />
-                    Celsius (°C)
-                  </label>
-                </div>
-              </div>
-
-              {/* Min/Max Values */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Temperature
-                  </label>
-                  <input
-                    type="number"
-                    defaultValue="68"
-                    id="probe-min-temp"
-                    className="input-field w-full"
-                    placeholder="68"
-                    step="0.1"
-                    min="50"
-                    max="90"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Temperature
-                  </label>
-                  <input
-                    type="number"
-                    defaultValue="86"
-                    id="probe-max-temp"
-                    className="input-field w-full"
-                    placeholder="86"
-                    step="0.1"
-                    min="50"
-                    max="90"
-                  />
-                </div>
-              </div>
-
-              {/* Poll Settings */}
-              <div className="space-y-3">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    defaultChecked={true}
-                    id="probe-poll-enabled"
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Enable Polling
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Poll Interval (seconds)
-                  </label>
-                  <select
-                    defaultValue="60"
-                    id="probe-poll-interval"
-                    className="input-field w-full"
-                  >
-                    <option value="30">30 seconds</option>
-                    <option value="60">1 minute</option>
-                    <option value="300">5 minutes</option>
-                    <option value="600">10 minutes</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowRegistrationModal(false);
-                    setEditingProbe(null);
-                  }}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    const name = (document.getElementById('probe-name') as HTMLInputElement)?.value;
-                    const role = (document.getElementById('probe-role') as HTMLInputElement)?.value;
-                    const unit = (document.querySelector('input[name="temperature-unit"]:checked') as HTMLInputElement)?.value || 'F';
-                    const minValue = parseFloat((document.getElementById('probe-min-temp') as HTMLInputElement)?.value || '68');
-                    const maxValue = parseFloat((document.getElementById('probe-max-temp') as HTMLInputElement)?.value || '86');
-                    const pollEnabled = (document.getElementById('probe-poll-enabled') as HTMLInputElement)?.checked;
-                    const pollInterval = parseInt((document.getElementById('probe-poll-interval') as HTMLSelectElement)?.value || '60');
-
-                    if (!name || !role) {
-                      setError('Name and role are required');
-                      return;
-                    }
-
-                    registerProbe(editingProbe, {
-                      name,
-                      role,
-                      unit,
-                      min_value: minValue,
-                      max_value: maxValue,
-                      poll_enabled: pollEnabled,
-                      poll_interval: pollInterval
-                    });
-                  }}
-                  className="btn-primary"
-                >
-                  Register Probe
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              registerProbe(editingProbe!, registrationFormData);
+            }}
+          >
+            Register Probe
+          </Button>
+        </FormActions>
+      </Modal>
 
       {/* Edit Modal */}
       {showEditModal && editingProbe && editingProbeData && (

@@ -69,12 +69,6 @@ export default function Flow() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Flow Control</h1>
-          <p className="mt-2 text-gray-600">
-            Manage circulation pumps and flow rates
-          </p>
-        </div>
         <div className="text-center text-gray-500">Loading flow data...</div>
       </div>
     );
@@ -83,12 +77,6 @@ export default function Flow() {
   if (error) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Flow Control</h1>
-          <p className="mt-2 text-gray-600">
-            Manage circulation pumps and flow rates
-          </p>
-        </div>
         <div className="text-center text-red-500">{error}</div>
       </div>
     );
@@ -96,12 +84,6 @@ export default function Flow() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Flow Control</h1>
-        <p className="mt-2 text-gray-600">
-          Manage circulation pumps and flow rates
-        </p>
-      </div>
 
       {/* Total Flow */}
       <div className="card">

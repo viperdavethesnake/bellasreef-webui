@@ -54,6 +54,12 @@ export class AuthService {
             const { access_token, refresh_token } = response.data
             TokenStorage.setToken(access_token)
             TokenStorage.setRefreshToken(refresh_token)
+            
+            // Dispatch custom event for WebSocket to reconnect
+            window.dispatchEvent(new CustomEvent('tokenRefreshed', { 
+              detail: { access_token, refresh_token } 
+            }));
+            
             originalRequest.headers.Authorization = `Bearer ${access_token}`
             return this.apiClient(originalRequest)
           } catch (refreshError) {
@@ -81,6 +87,12 @@ export class AuthService {
     const data = response.data
     TokenStorage.setToken(data.access_token)
     TokenStorage.setRefreshToken(data.refresh_token)
+    
+    // Dispatch custom event for WebSocket to connect
+    window.dispatchEvent(new CustomEvent('tokenRefreshed', { 
+      detail: { access_token: data.access_token, refresh_token: data.refresh_token } 
+    }));
+    
     return data
   }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Activity, Gauge, Zap } from 'lucide-react';
 import { ApiService } from '../services/api';
+import { PageHeader, Card, Button, Badge } from '../components';
 
 interface HALChannel {
   id: string;
@@ -142,12 +143,10 @@ export default function HALPWM() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">HAL PWM Management</h1>
-          <p className="mt-2 text-gray-600">
-            Control HAL channels and PWM configuration
-          </p>
-        </div>
+        <PageHeader
+          title="HAL PWM Management"
+          description="Control HAL channels and PWM configuration"
+        />
         <div className="text-center text-gray-500">Loading HAL/PWM data...</div>
       </div>
     );
@@ -156,12 +155,10 @@ export default function HALPWM() {
   if (error) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">HAL PWM Management</h1>
-          <p className="mt-2 text-gray-600">
-            Control HAL channels and PWM configuration
-          </p>
-        </div>
+        <PageHeader
+          title="HAL PWM Management"
+          description="Control HAL channels and PWM configuration"
+        />
         <div className="text-center text-red-500">{error}</div>
       </div>
     );
@@ -169,19 +166,17 @@ export default function HALPWM() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">HAL PWM Management</h1>
-        <p className="mt-2 text-gray-600">
-          Control HAL channels and PWM configuration
-        </p>
-      </div>
+      <PageHeader
+        title="HAL PWM Management"
+        description="Control HAL channels and PWM configuration"
+      />
 
       {/* HAL Controllers */}
-      <div className="card">
+      <Card>
         <h3 className="text-lg font-medium text-gray-900 mb-4">HAL Controllers</h3>
         <div className="space-y-4">
           {controllers.map((controller) => (
-            <div key={controller.identifier} className="border rounded-lg p-4">
+            <div key={controller.identifier} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   <Activity className="h-5 w-5 text-blue-500" />
@@ -194,31 +189,27 @@ export default function HALPWM() {
                     </p>
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  controller.status === 'registered'
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
+                <Badge variant={controller.status === 'registered' ? 'success' : 'warning'}>
                   {controller.status === 'registered' ? 'Registered' : 'Unregistered'}
-                </div>
+                </Badge>
               </div>
               
               {controller.status !== 'registered' && (
-                <button 
+                <Button 
                   onClick={() => handleRegisterController(controller)}
-                  className="btn-primary w-full"
+                  icon={Settings}
+                  className="w-full"
                 >
-                  <Settings className="h-4 w-4 mr-2" />
                   Register Controller
-                </button>
+                </Button>
               )}
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* PWM Configuration */}
-      <div className="card">
+      <Card>
         <h3 className="text-lg font-medium text-gray-900 mb-4">PWM Configuration</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -234,14 +225,14 @@ export default function HALPWM() {
             <span className="text-sm font-medium text-gray-900">{pwmConfig.channels.filter(c => c.enabled).length}</span>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* HAL Channels */}
-      <div className="card">
+      <Card>
         <h3 className="text-lg font-medium text-gray-900 mb-4">HAL Channels</h3>
         <div className="space-y-4">
           {halChannels.map((channel) => (
-            <div key={channel.id} className="border rounded-lg p-4">
+            <div key={channel.id} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   <Activity className="h-5 w-5 text-blue-500" />
@@ -250,13 +241,9 @@ export default function HALPWM() {
                     <p className="text-sm text-gray-600 capitalize">{channel.type} • {channel.unit}</p>
                   </div>
                 </div>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  channel.enabled 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
+                <Badge variant={channel.enabled ? 'success' : 'default'}>
                   {channel.enabled ? 'Enabled' : 'Disabled'}
-                </div>
+                </Badge>
               </div>
               
               <div className="space-y-3">
@@ -278,50 +265,50 @@ export default function HALPWM() {
                 </div>
                 
                 <div className="flex space-x-2">
-                  <button 
+                  <Button 
                     onClick={() => handleChannelControl(channel.id, Math.min(channel.value + 10, 100))}
-                    className="btn-primary flex-1"
+                    variant="primary"
+                    size="sm"
+                    icon={Settings}
                     disabled={!channel.enabled}
+                    className="flex-1"
                   >
-                    <Settings className="h-4 w-4 mr-1" />
                     Increase
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => handleChannelControl(channel.id, Math.max(channel.value - 10, 0))}
-                    className="btn-secondary flex-1"
+                    variant="secondary"
+                    size="sm"
                     disabled={!channel.enabled}
+                    className="flex-1"
                   >
                     Decrease
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Quick Actions */}
-      <div className="card">
+      <Card>
         <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <button className="btn-primary">
-            <Zap className="h-4 w-4 mr-2" />
+          <Button icon={Zap}>
             Test All
-          </button>
-          <button className="btn-secondary">
-            <Gauge className="h-4 w-4 mr-2" />
+          </Button>
+          <Button variant="secondary" icon={Gauge}>
             Calibrate
-          </button>
-          <button className="btn-secondary">
-            <Settings className="h-4 w-4 mr-2" />
+          </Button>
+          <Button variant="secondary" icon={Settings}>
             Configure
-          </button>
-          <button className="btn-secondary">
-            <Activity className="h-4 w-4 mr-2" />
+          </Button>
+          <Button variant="secondary" icon={Activity}>
             Monitor
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

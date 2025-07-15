@@ -5,6 +5,8 @@ import {
   Monitor,
   Settings,
   Sun,
+  Droplets,
+  Activity,
   LogOut
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -17,6 +19,8 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Monitor', href: '/monitor', icon: Monitor },
   { name: 'Lighting', href: '/lighting', icon: Sun },
+  { name: 'Flow', href: '/flow', icon: Droplets },
+  { name: 'Telemetry', href: '/telemetry', icon: Activity },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

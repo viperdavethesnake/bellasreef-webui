@@ -450,6 +450,14 @@ export class ApiService {
   }
 
   // Temperature Management
+  static async getTemperatureServiceHealth() {
+    return temperatureApiClient.get('/health')
+  }
+
+  static async getTemperatureSubsystemStatus() {
+    return temperatureApiClient.get('/api/probes/system/status')
+  }
+
   static async getCurrentTemperature() {
     return temperatureApiClient.get('/api/probes/')
   }
@@ -459,11 +467,11 @@ export class ApiService {
   }
 
   static async getProbeReading(hardwareId: string, unit: 'C' | 'F' = 'F') {
-    return temperatureApiClient.get(`/api/probes/hardware/${hardwareId}/reading?unit=${unit}`)
+    return temperatureApiClient.get(`/api/probes/hardware/${hardwareId}/reading?unit=${unit}&resolution=12`)
   }
 
   static async getRegisteredProbeReading(deviceId: number, unit: 'C' | 'F' = 'F') {
-    return temperatureApiClient.get(`/api/probes/${deviceId}/reading?unit=${unit}`)
+    return temperatureApiClient.get(`/api/probes/${deviceId}/reading?unit=${unit}&resolution=12`)
   }
 
   static async updateProbe(deviceId: number, updateData: any) {
@@ -474,8 +482,8 @@ export class ApiService {
     return temperatureApiClient.delete(`/api/probes/${deviceId}`)
   }
 
-  static async registerProbe(data: { probe_id: string; name: string }) {
-    return temperatureApiClient.post('/api/probes/register', data)
+  static async registerProbe(data: { name: string; device_type: string; address: string; role: string; resolution?: number; unit?: string; min_value?: number; max_value?: number; poll_enabled?: boolean; poll_interval?: number; active?: boolean }) {
+    return temperatureApiClient.post('/api/probes/', data)
   }
 
   static async getTemperatureHistory() {

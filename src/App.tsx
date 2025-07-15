@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Monitor from './pages/Monitor';
 import Settings from './pages/Settings';
 import LightingWrapper from './pages/LightingWrapper';
+import FlowWrapper from './pages/FlowWrapper';
+import TelemetryWrapper from './pages/TelemetryWrapper';
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="monitor/*" element={<Monitor />} />
           <Route path="lighting/*" element={<LightingWrapper />} />
+          <Route path="flow/*" element={<FlowWrapper />} />
+          <Route path="telemetry/*" element={<TelemetryWrapper />} />
           <Route path="settings/*" element={<Settings />} />
         </Route>
         

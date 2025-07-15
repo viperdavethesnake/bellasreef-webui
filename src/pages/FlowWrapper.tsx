@@ -1,43 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Sun, Settings, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { Activity, Settings, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import TabNavigation from '../components/TabNavigation';
-import Lighting from './Lighting';
+import Flow from './Flow';
 import { ApiService } from '../services/api';
 
-const lightingTabs = [
-  { name: 'Control', href: '/lighting', icon: Sun },
-  { name: 'Settings', href: '/settings/lighting', icon: Settings },
+const flowTabs = [
+  { name: 'Control', href: '/flow/control', icon: Activity, description: 'Flow control and monitoring' },
+  { name: 'Settings', href: '/settings/flow', icon: Settings, description: 'Flow system configuration' },
 ];
 
-// Error Boundary Component
-class LightingErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: any, info: any) {
-    console.error('Lighting page crashed:', error, info);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-6 text-red-600">
-          <h2 className="text-2xl font-bold mb-2">Lighting Page Error</h2>
-          <pre>{this.state.error?.toString()}</pre>
-          <p>Check the browser console for more details.</p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-export default function LightingWrapper() {
+export default function FlowWrapper() {
   const location = useLocation();
   const [serviceStatus, setServiceStatus] = useState<'healthy' | 'error' | 'warning' | 'unknown'>('unknown');
   const [statusLoading, setStatusLoading] = useState(true);
@@ -46,11 +20,11 @@ export default function LightingWrapper() {
     const checkServiceHealth = async () => {
       try {
         setStatusLoading(true);
-        const response = await ApiService.getLightingStatus();
+        const response = await ApiService.getFlowStatus();
         // If we get a response, consider it healthy
         setServiceStatus('healthy');
       } catch (error) {
-        console.error('Lighting service health check failed:', error);
+        console.error('Flow service health check failed:', error);
         setServiceStatus('error');
       } finally {
         setStatusLoading(false);
@@ -106,23 +80,22 @@ export default function LightingWrapper() {
   };
 
   return (
-    <LightingErrorBoundary>
-      <div className="space-y-6">
-        <PageHeader
-          title="Lighting System"
-          description="Control and configure your aquarium lighting"
-          statusIndicator={{
-            status: statusLoading ? 'loading' : serviceStatus,
-            text: getStatusText()
-          }}
-        />
+    <div className="space-y-6">
+      <PageHeader
+        title="Flow Management"
+        description="Control circulation pumps and configure flow settings"
+        statusIndicator={{
+          status: statusLoading ? 'loading' : serviceStatus,
+          text: getStatusText()
+        }}
+      />
 
-        <TabNavigation tabs={lightingTabs} />
-        
-        <Routes>
-          <Route index element={<Lighting />} />
-        </Routes>
-      </div>
-    </LightingErrorBoundary>
+      <TabNavigation tabs={flowTabs} />
+
+      <Routes>
+        <Route index element={<Flow />} />
+        <Route path="control" element={<Flow />} />
+      </Routes>
+    </div>
   );
 } 
