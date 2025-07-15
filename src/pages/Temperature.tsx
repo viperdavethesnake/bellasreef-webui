@@ -4,7 +4,6 @@ import { ApiService } from '../services/api';
 
 interface TemperatureData {
   current: number;
-  target: number;
   min: number;
   max: number;
   heater: string;
@@ -14,7 +13,6 @@ interface TemperatureData {
 export default function Temperature() {
   const [tempData, setTempData] = useState<TemperatureData>({
     current: 78.2,
-    target: 78.0,
     min: 75.0,
     max: 82.0,
     heater: 'Off',
@@ -32,13 +30,8 @@ export default function Temperature() {
         const currentResponse = await ApiService.getCurrentTemperature();
         const currentData = currentResponse.data;
         
-        // Fetch target temperature
-        const targetResponse = await ApiService.getTemperatureTarget();
-        const targetData = targetResponse.data;
-        
         setTempData({
           current: currentData.temperature || 78.2,
-          target: targetData.target || 78.0,
           min: currentData.min_temp || 75.0,
           max: currentData.max_temp || 82.0,
           heater: currentData.heater_status || 'Off',
@@ -101,7 +94,7 @@ export default function Temperature() {
               {tempData.current}°F
             </div>
             <div className="text-sm text-gray-600">
-              Target: {tempData.target}°F
+              Range: {tempData.min}°F - {tempData.max}°F
             </div>
           </div>
         </div>
@@ -160,7 +153,7 @@ export default function Temperature() {
       </div>
 
       {/* Alerts */}
-      {tempData.current > tempData.target + 1 || tempData.current < tempData.target - 1 ? (
+      {tempData.current > tempData.max || tempData.current < tempData.min ? (
         <div className="card border-l-4 border-l-yellow-500">
           <div className="flex items-center">
             <AlertTriangle className="h-5 w-5 text-yellow-500 mr-3" />
@@ -169,7 +162,7 @@ export default function Temperature() {
                 Temperature Alert
               </h3>
               <p className="text-sm text-yellow-700">
-                Temperature is outside target range. Monitoring closely.
+                Temperature is outside safe range. Monitoring closely.
               </p>
             </div>
           </div>

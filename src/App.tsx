@@ -25,7 +25,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="monitor/*" element={<Monitor />} />
           <Route path="lighting/*" element={<LightingWrapper />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="settings/*" element={<Settings />} />
         </Route>
         
         {/* Catch all route */}
